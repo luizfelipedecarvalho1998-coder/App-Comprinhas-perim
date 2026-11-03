@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Carrinho Certo - iFood Dark</title>
+
+  <!-- PWA Manifest Embutido -->
+  <link rel="manifest" href="data:application/manifest+json;utf8,{
+    %22name%22:%22Carrinho%20Certo%22,
+    %22short_name%22:%22Carrinho%22,
+    %22start_url%22:%22./%22,
+    %22display%22:%22standalone%22,
+    %22background_color%22:%22%230b0f17%22,
+    %22theme_color%22:%22%23ea1d2c%22
+  }">
+
+  <!-- Tailwind CSS CDN -->
+  <link rel="stylesheet" href="vendor/tailwind.css">
+  <!-- Lucide Icons -->
+  <script src="vendor/lucide.min.js"></script>
+
+  <style>
+    @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('vendor/fonts/plus-jakarta-sans-latin-400-normal.woff2') format('woff2'); }
+    @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('vendor/fonts/plus-jakarta-sans-latin-500-normal.woff2') format('woff2'); }
+    @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('vendor/fonts/plus-jakarta-sans-latin-600-normal.woff2') format('woff2'); }
+    @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('vendor/fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2'); }
+    @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('vendor/fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2'); }
+    
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: #0b0f17;
+      color: #f8fafc;
+    }
+
+    .ifood-red { color: #ea1d2c; }
+    .bg-ifood-red { background-color: #ea1d2c; }
+    .bg-ifood-red-dark { background-color: #c41220; }
+    .glow-red { box-shadow: 0 0 20px rgba(234, 29, 44, 0.35); }
+    .glow-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.35); }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+
+    /* Ajuste dinâmico para evitar sobreposição com a barra de navegação do Android */
+    .safe-bottom-nav {
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+  </style>
+</head>
+<body class="max-w-md mx-auto bg-slate-950 border-x border-slate-900 shadow-2xl relative select-none flex flex-col h-full">
+
+  <!-- TOP BAR / HEADER COMPACTO (SEM DUPLICAR O NOME DA APLICAÇÃO) -->
+  <header class="px-3 py-2 bg-slate-950 border-b border-slate-900 flex justify-between items-center shrink-0 z-40">
+    <div class="flex items-center gap-2 cursor-pointer" onclick="vibrateSoft(); switchTab('home')">
+      <div class="w-7 h-7 rounded-xl bg-ifood-red flex items-center justify-center text-white shadow-lg glow-red">
+        <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
+      </div>
+      <div>
+        <h1 class="text-xs font-extrabold text-white leading-none tracking-tight">Carrinho<span class="ifood-red">Certo</span></h1>
+        <span class="text-[8px] font-bold tracking-widest text-slate-400 uppercase">Casal</span>
+      </div>
+    </div>
+    
+    <button onclick="vibrateSoft(); openSyncModal()" id="syncBtnBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition">
+      <i data-lucide="wifi-off" class="w-3.5 h-3.5 text-slate-500" id="syncIcon"></i>
+      <span id="syncStatusText">Offline</span>
+    </button>
+  </header>
+
+  <!-- MAIN DYNAMIC CONTENT CONTAINER -->
+  <main class="flex-1 overflow-hidden relative flex flex-col bg-slate-950" id="appContent" onclick="handleGlobalClick(event)"></main>
+
+  <!-- FOOTER NAV COM PROTEÇÃO PARA OS BOTÕES DO ANDROID -->
+  <nav class="bg-slate-950 border-t border-slate-900 flex justify-around pt-2.5 pb-3 safe-bottom-nav shrink-0 z-40">
+    <button onclick="vibrateSoft(); switchTab('home')" id="nav-home" class="flex flex-col items-center gap-0.5 p-1 ifood-red">
+      <i data-lucide="home" class="w-5 h-5"></i>
+      <span class="text-[10px] font-bold">Início</span>
+    </button>
+    <button onclick="vibrateSoft(); switchTab('planner')" id="nav-planner" class="flex flex-col items-center gap-0.5 p-1 text-slate-500 hover:text-slate-300">
+      <i data-lucide="list-checks" class="w-5 h-5"></i>
+      <span class="text-[10px] font-bold">Listas</span>
+    </button>
+    <button onclick="vibrateSoft(); switchTab('chat')" id="nav-chat" class="flex flex-col items-center gap-0.5 p-1 text-slate-500 hover:text-slate-300 relative">
+      <div class="relative">
+        <i data-lucide="message-square" class="w-5 h-5"></i>
+        <span id="unreadChatBadge" class="hidden absolute -top-1.5 -right-2 bg-ifood-red text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center glow-red border border-slate-950 animate-pulse">0</span>
+      </div>
+      <span class="text-[10px] font-bold">Chat</span>
+    </button>
+    <button onclick="vibrateSoft(); switchTab('calculator')" id="nav-calculator" class="flex flex-col items-center gap-0.5 p-1 text-slate-500 hover:text-slate-300">
+      <i data-lucide="calculator" class="w-5 h-5"></i>
+      <span class="text-[10px] font-bold">Calc</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: HISTÓRICO COMPLETO -->
+  <div id="historyModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[85vh]">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-emerald-400"></i> Histórico de Compras
+        </h3>
+        <button onclick="vibrateSoft(); closeHistoryModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div id="historyListContainer" class="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1"></div>
+      <button onclick="vibrateSoft(); closeHistoryModal()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-xs transition">
+        Fechar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES DE UMA COMPRA DO HISTÓRICO -->
+  <div id="historyDetailModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl flex flex-col max-h-[92vh]">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 shrink-0">
+        <div>
+          <h3 id="historyModalTitle" class="text-base font-extrabold text-white">Nome da Lista</h3>
+          <span id="historyModalDate" class="text-[11px] text-slate-400">Data da Compra</span>
+        </div>
+        <button onclick="vibrateSoft(); closeHistoryDetailModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs shrink-0">
+        <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-slate-400 block text-[10px]">TOTAL PAGO</span>
+          <span id="historyModalTotal" class="text-sm font-black text-emerald-400">R$ 0,00</span>
+        </div>
+        <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-slate-400 block text-[10px]">LIMITE DEFINIDO</span>
+          <span id="historyModalBudget" class="text-sm font-black text-white">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div class="space-y-2 flex-1 overflow-hidden flex flex-col min-h-0">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block shrink-0">Alimentos Comprados:</span>
+        <div id="historyModalItemsList" class="space-y-2 overflow-y-auto custom-scrollbar pr-1 flex-1"></div>
+      </div>
+
+      <div class="flex gap-2 pt-2 shrink-0 border-t border-slate-800">
+        <button onclick="vibrateSoft(); deleteCurrentHistoryItem()" class="px-4 py-3 bg-red-600/20 border border-red-500/40 hover:bg-red-600 text-red-400 hover:text-white font-bold rounded-2xl text-xs transition flex items-center justify-center gap-1.5">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> Apagar Compra
+        </button>
+        <button onclick="vibrateSoft(); closeHistoryDetailModal()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-xs transition">
+          Voltar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VISUALIZAR FOTO AMPLIADA -->
+  <div id="imageZoomModal" onclick="closeImageZoom()" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-4 cursor-zoom-out">
+    <div class="absolute top-4 right-4 z-50">
+      <button onclick="event.stopPropagation(); vibrateSoft(); closeImageZoom()" class="p-2.5 rounded-full bg-slate-900 text-white border border-slate-700"><i data-lucide="x" class="w-6 h-6"></i></button>
+    </div>
+    <div class="max-w-full max-h-[85vh] overflow-hidden rounded-2xl border border-slate-800" onclick="event.stopPropagation()">
+      <img id="zoomedImageElement" src="" class="w-full h-full object-contain">
+    </div>
+  </div>
+
+  <!-- MODAL: PREÇO DO ITEM -->
+  <div id="itemDetailModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl relative">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span id="modalItemIcon" class="text-2xl">🛒</span>
+          <h3 id="modalItemTitle" class="text-base font-extrabold text-white">Nome do Item</h3>
+        </div>
+        <button onclick="vibrateSoft(); closeItemDetailModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-3 pt-2">
+        <div class="flex justify-between items-center bg-slate-950 p-3 rounded-2xl border border-slate-800">
+          <span class="text-xs text-slate-400 font-bold">Quantidade:</span>
+          <div class="flex items-center bg-slate-900 rounded-xl border border-slate-700 p-1">
+            <button onclick="vibrateSoft(); changeModalQty(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-black flex items-center justify-center text-sm">-</button>
+            <span id="modalItemQtyVal" class="w-10 text-center text-xs font-black text-white">1</span>
+            <button onclick="vibrateSoft(); changeModalQty(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-black flex items-center justify-center text-sm">+</button>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center bg-slate-950 p-3 rounded-2xl border border-slate-800">
+          <span class="text-xs text-slate-400 font-bold">Preço Unitário (R$):</span>
+          <input type="number" step="0.01" id="modalItemPriceInput" placeholder="0.00" class="w-24 bg-slate-900 border border-slate-700 text-emerald-400 font-black text-sm text-right rounded-xl py-2 px-3 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div id="modalItemHistoryBox" class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400"></div>
+
+        <button onclick="vibrateSoft(); saveItemDetailModal()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-xs transition shadow-lg glow-green">
+          CONFIRMAR PREÇO
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAÇÃO DE EXCLUSÃO MÚLTIPLA -->
+  <div id="deleteConfirmModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+        <i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i> Excluir Itens?
+      </h3>
+      <p class="text-xs text-slate-300" id="deleteModalText">Deseja realmente remover os itens selecionados?</p>
+      <div class="flex gap-2 pt-2">
+        <button onclick="vibrateSoft(); closeDeleteModal()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-xs transition">Cancelar</button>
+        <button onclick="vibrateSoft(); executeDeleteSelected()" class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-2xl text-xs transition shadow-lg">Sim, Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAÇÃO DE LIMPAR CHAT -->
+  <div id="clearChatConfirmModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+        <i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i> Limpar Chat?
+      </h3>
+      <p class="text-xs text-slate-300">Deseja realmente apagar todas as mensagens da conversa?</p>
+      <div class="flex gap-2 pt-2">
+        <button onclick="vibrateSoft(); closeClearChatModal()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-xs transition">Cancelar</button>
+        <button onclick="vibrateSoft(); executeClearChat()" class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-2xl text-xs transition shadow-lg">Sim, Limpar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAÇÃO DE FINALIZAR COMPRA -->
+  <div id="finishConfirmModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-5 h-5 text-amber-400"></i> Finalizar Compra?
+        </h3>
+        <button onclick="vibrateSoft(); closeFinishModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div id="finishModalContent" class="space-y-3 text-xs text-slate-300"></div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="vibrateSoft(); closeFinishModal()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-xs transition">
+          Continuar Comprando
+        </button>
+        <button onclick="vibrateSoft(); confirmFinishPurchase()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-xs transition shadow-lg glow-green">
+          Sim, Finalizar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SELECIONAR LISTA -->
+  <div id="selectListModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-extrabold text-white">Escolha a Lista para o Mercado</h3>
+        <button onclick="vibrateSoft(); closeSelectListModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <p class="text-xs text-slate-400">Qual dos 3 slots você vai usar nessa compra?</p>
+      <div id="listOptionsContainer" class="space-y-2.5"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: PAREAMENTO E PERFIL -->
+  <div id="syncModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+          <i data-lucide="users" class="w-5 h-5 ifood-red"></i> Conexão & Perfil
+        </h3>
+        <button onclick="vibrateSoft(); closeSyncModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+          <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Seu Perfil no Chat:</label>
+          <div class="flex items-center gap-3">
+            <div class="relative w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden cursor-pointer shrink-0" onclick="vibrateSoft(); document.getElementById('profilePicInput').click()">
+              <img id="profilePicPreview" src="" class="w-full h-full object-cover hidden">
+              <i data-lucide="camera" id="profilePicPlaceholder" class="w-5 h-5 text-slate-400"></i>
+            </div>
+            <input type="file" id="profilePicInput" accept="image/*" class="hidden" onchange="handleProfilePicUpload(this)">
+            <input type="text" id="userNameInput" placeholder="Seu Nome (Ex: Amor)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 font-bold">
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+          <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Código de Conexão do Casal:</label>
+          <div class="flex items-center gap-2">
+            <input type="text" id="coupleCodeInput" placeholder="Ex: CASAL-8921" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-center font-mono uppercase font-extrabold text-white focus:outline-none focus:border-red-500">
+            <button onclick="vibrateSoft(); generateRandomCode()" class="px-3.5 py-2.5 bg-slate-800 text-slate-200 text-xs font-bold rounded-xl hover:bg-slate-700">Gerar</button>
+          </div>
+        </div>
+
+        <button onclick="vibrateSoft(); saveSyncCode()" class="w-full py-3 bg-ifood-red hover:bg-ifood-red-dark font-extrabold text-white rounded-2xl text-sm transition shadow-lg glow-red">
+          Salvar Configurações
+        </button>
+
+        <div class="text-[11px] text-slate-500 text-center">
+          Status: <span id="firebaseStatus" class="font-bold text-slate-400">Verificando...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIREBASE & CORE LOGIC -->
+  <script type="module">
+    import { initializeApp, getAuth, signInAnonymously, initializeFirestore, persistentLocalCache, doc, onSnapshot, setDoc } from "./vendor/firebase.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDRxVWRJi8jn1JIKrYa0cJBmykMXCgU3CM",
+      authDomain: "app-lista-de-mercado-ce4a9.firebaseapp.com",
+      projectId: "app-lista-de-mercado-ce4a9",
+      storageBucket: "app-lista-de-mercado-ce4a9.firebasestorage.app",
+      messagingSenderId: "94824577996",
+      appId: "1:94824577996:web:6c2f8b6ca4976ea20fbb69"
+    };
+
+    window.appState = {
+      currentTab: 'home',
+      searchQuery: '',
+      coupleCode: localStorage.getItem('carrinho_couple_code') || '',
+      userName: localStorage.getItem('carrinho_user_name') || 'Eu',
+      userPic: localStorage.getItem('carrinho_user_pic') || '',
+      slots: JSON.parse(localStorage.getItem('carrinho_slots')) || [
+        { id: 'slot1', name: 'Compra do Mês', items: [] },
+        { id: 'slot2', name: 'Feira e Horti', items: [] },
+        { id: 'slot3', name: 'Limpeza e Casa', items: [] }
+      ],
+      activePlannerSlot: 'slot1',
+      activePurchase: JSON.parse(localStorage.getItem('carrinho_active_purchase')) || null,
+      history: JSON.parse(localStorage.getItem('carrinho_history')) || [],
+      messages: JSON.parse(localStorage.getItem('carrinho_messages')) || [],
+      unreadCount: parseInt(localStorage.getItem('carrinho_unread_count') || '0'),
+      replyToMsg: null,
+      activeMenuMsgId: null,
+      activeReactionMsgId: null,
+      currentViewingHistoryIdx: null,
+      dbConnected: false,
+      isPricePanelCollapsed: false,
+      isSelectionMode: false,
+      selectedForDeletion: [],
+      editingItemIdx: null,
+      tempEditQty: 1,
+      calcDisplay: '0',
+      calcEquation: '',
+      calcStoredVal: null,
+      calcOperation: null,
+      calcResetNext: false
+    };
+
+    let db = null;
+    let auth = null;
+    let unsubscribeSync = null;
+
+    window.vibrateSoft = function() {
+      if (navigator.vibrate) navigator.vibrate(12);
+    };
+
+    window.addEventListener('popstate', (event) => {
+      const zoomModal = document.getElementById('imageZoomModal');
+      const historyDetail = document.getElementById('historyDetailModal');
+      const historyModal = document.getElementById('historyModal');
+      const itemDetail = document.getElementById('itemDetailModal');
+      const syncModal = document.getElementById('syncModal');
+
+      if (zoomModal && !zoomModal.classList.contains('hidden')) {
+        closeImageZoom();
+      } else if (historyDetail && !historyDetail.classList.contains('hidden')) {
+        closeHistoryDetailModal();
+      } else if (historyModal && !historyModal.classList.contains('hidden')) {
+        closeHistoryModal();
+      } else if (itemDetail && !itemDetail.classList.contains('hidden')) {
+        closeItemDetailModal();
+      } else if (syncModal && !syncModal.classList.contains('hidden')) {
+        closeSyncModal();
+      }
+    });
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      // Cache offline: alterações feitas sem internet ficam na fila e sobem sozinhas ao reconectar
+      db = initializeFirestore(app, { localCache: persistentLocalCache() });
+
+      const connectAuth = () => signInAnonymously(auth).then(() => {
+        window.appState.dbConnected = true;
+        updateSyncUI();
+        if (window.appState.coupleCode) setupFirestoreSync();
+      }).catch(err => console.warn("Auth Anônimo:", err));
+
+      connectAuth();
+      // Se abriu sem internet, tenta de novo quando a rede voltar
+      window.addEventListener('online', () => { if (!window.appState.dbConnected) connectAuth(); });
+    } catch (e) { console.warn("FirebaseInit:", e); }
+
+    window.getItemIcon = function(name) {
+      const n = name.toLowerCase();
+      if (n.includes('leite') || n.includes('queijo') || n.includes('iogurte') || n.includes('manteiga')) return '🧀';
+      if (n.includes('carne') || n.includes('frango') || n.includes('peixe') || n.includes('bife') || n.includes('linguiça')) return '🥩';
+      if (n.includes('maçã') || n.includes('banana') || n.includes('tomate') || n.includes('alface') || n.includes('fruta') || n.includes('batata')) return '🍎';
+      if (n.includes('arroz') || n.includes('feijão') || n.includes('macarrão') || n.includes('massa') || n.includes('farinha')) return '🌾';
+      if (n.includes('pão') || n.includes('bolo') || n.includes('biscoito') || n.includes('torrada')) return '🍞';
+      if (n.includes('sabão') || n.includes('detergente') || n.includes('desinfetante') || n.includes('papel') || n.includes('amaciante')) return '🧹';
+      if (n.includes('coca') || n.includes('refrigerante') || n.includes('suco') || n.includes('cerveja') || n.includes('água') || n.includes('vinho')) return '🥤';
+      if (n.includes('chocolate') || n.includes('doce') || n.includes('sorvete') || n.includes('snack')) return '🍫';
+      return '🛒';
+    };
+
+    window.saveLocal = function(fieldToUpdate = null) {
+      localStorage.setItem('carrinho_slots', JSON.stringify(window.appState.slots));
+      localStorage.setItem('carrinho_active_purchase', JSON.stringify(window.appState.activePurchase));
+      localStorage.setItem('carrinho_history', JSON.stringify(window.appState.history));
+      localStorage.setItem('carrinho_messages', JSON.stringify(window.appState.messages));
+      localStorage.setItem('carrinho_unread_count', window.appState.unreadCount.toString());
+      localStorage.setItem('carrinho_couple_code', window.appState.coupleCode);
+      localStorage.setItem('carrinho_user_name', window.appState.userName);
+      localStorage.setItem('carrinho_user_pic', window.appState.userPic);
+      
+      if (window.appState.coupleCode && window.appState.dbConnected && db && !window.__applyingRemote) {
+        syncToFirestore(fieldToUpdate);
+      }
+    };
+
+    function syncToFirestore(fieldToUpdate = null) {
+      if (!window.appState.coupleCode || !db) return;
+      const docRef = doc(db, "couples", window.appState.coupleCode.toUpperCase().trim());
+      const payload = { updatedAt: new Date().toISOString() };
+      if (fieldToUpdate && window.appState[fieldToUpdate] !== undefined) {
+        payload[fieldToUpdate] = window.appState[fieldToUpdate];
+      } else {
+        payload.slots = window.appState.slots;
+        payload.activePurchase = window.appState.activePurchase;
+        payload.history = window.appState.history;
+        payload.messages = window.appState.messages;
+      }
+      setDoc(docRef, payload, { merge: true }).catch(err => console.error(err));
+    }
+
+    window.setupFirestoreSync = function() {
+      if (unsubscribeSync) unsubscribeSync();
+      if (!window.appState.coupleCode || !db) return;
+
+      const code = window.appState.coupleCode.toUpperCase().trim();
+      const docRef = doc(db, "couples", code);
+
+      const statusEl = document.getElementById('firebaseStatus');
+      if (statusEl) statusEl.innerText = "Conectado: " + code;
+
+      unsubscribeSync = onSnapshot(docRef, (docSnap) => {
+        // Ignora o "eco" das minhas próprias alterações ainda pendentes
+        if (docSnap.metadata.hasPendingWrites) return;
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          let prevMsgCount = window.appState.messages.length;
+
+          if (data.slots) window.appState.slots = data.slots;
+          if (data.history) window.appState.history = data.history;
+          if (data.activePurchase !== undefined) window.appState.activePurchase = data.activePurchase;
+          if (data.messages) {
+            const newMsgs = data.messages;
+            if (newMsgs.length > prevMsgCount) {
+              const diff = newMsgs.length - prevMsgCount;
+              const lastMsg = newMsgs[newMsgs.length - 1];
+              if (lastMsg.sender !== window.appState.userName && window.appState.currentTab !== 'chat') {
+                window.appState.unreadCount += diff;
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+              }
+            }
+            window.appState.messages = newMsgs;
+          }
+
+          // Só guarda localmente: não reenvia ao Firebase o que acabou de receber de lá
+          window.__applyingRemote = true;
+          saveLocal();
+          window.__applyingRemote = false;
+          renderApp();
+        }
+      });
+    };
+
+    window.switchTab = function(tabName) {
+      window.appState.currentTab = tabName;
+      window.appState.isSelectionMode = false;
+      window.appState.selectedForDeletion = [];
+      window.appState.activeMenuMsgId = null;
+      window.appState.activeReactionMsgId = null;
+
+      if (tabName === 'chat') {
+        window.appState.unreadCount = 0;
+        localStorage.setItem('carrinho_unread_count', '0');
+      }
+
+      ['home', 'planner', 'chat', 'calculator'].forEach(t => {
+        const btn = document.getElementById(`nav-${t}`);
+        if (btn) {
+          btn.className = (t === tabName) 
+            ? "flex flex-col items-center gap-0.5 p-1 ifood-red font-bold" 
+            : "flex flex-col items-center gap-0.5 p-1 text-slate-500 hover:text-slate-300";
+        }
+      });
+      renderApp();
+    };
+
+    function updateSyncUI() {
+      const badgeText = document.getElementById('syncStatusText');
+      const badgeIcon = document.getElementById('syncIcon');
+      const unreadBadge = document.getElementById('unreadChatBadge');
+
+      if (unreadBadge) {
+        if (window.appState.unreadCount > 0 && window.appState.currentTab !== 'chat') {
+          unreadBadge.innerText = window.appState.unreadCount > 9 ? '9+' : window.appState.unreadCount;
+          unreadBadge.classList.remove('hidden');
+        } else {
+          unreadBadge.classList.add('hidden');
+        }
+      }
+
+      if (!badgeText) return;
+
+      if (window.appState.coupleCode) {
+        badgeText.innerText = window.appState.coupleCode;
+        badgeText.className = "ifood-red font-bold";
+        if (badgeIcon) badgeIcon.setAttribute('data-lucide', 'users');
+      } else {
+        badgeText.innerText = "Offline";
+        badgeText.className = "text-slate-400";
+        if (badgeIcon) badgeIcon.setAttribute('data-lucide', 'wifi-off');
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    window.handleGlobalClick = function(e) {
+      if (!e.target.closest('.group') && !e.target.closest('.chat-msg-box') && !e.target.closest('.absolute')) {
+        if (window.appState.activeMenuMsgId || window.appState.activeReactionMsgId) {
+          window.appState.activeMenuMsgId = null;
+          window.appState.activeReactionMsgId = null;
+          renderApp();
+        }
+      }
+    };
+
+    window.renderApp = function() {
+      const container = document.getElementById('appContent');
+      updateSyncUI();
+
+      if (window.appState.currentTab === 'home') renderHomeScreen(container);
+      else if (window.appState.currentTab === 'planner') renderPlannerScreen(container);
+      else if (window.appState.currentTab === 'buying') renderBuyingScreen(container);
+      else if (window.appState.currentTab === 'chat') renderChatScreen(container);
+      else if (window.appState.currentTab === 'calculator') renderCalculatorScreen(container);
+      
+      if (window.lucide) lucide.createIcons();
+    };
+
+    function renderHomeScreen(container) {
+      container.className = "flex-1 p-4 overflow-y-auto custom-scrollbar";
+      const lastPurchase = window.appState.history.length > 0 ? window.appState.history[0] : null;
+      let daysRemainingText = "Nenhuma compra registrada";
+      
+      if (lastPurchase && lastPurchase.date) {
+        const lastDate = new Date(lastPurchase.date);
+        const nextDate = new Date(lastDate.getTime() + (15 * 24 * 60 * 60 * 1000));
+        const diffDays = Math.ceil((nextDate - new Date()) / (1000 * 60 * 60 * 24));
+        daysRemainingText = (diffDays > 0) ? `Próxima compra em ~${diffDays} dias` : `Sua próxima compra está na hora!`;
+      }
+
+      const totalSpentMonth = window.appState.history.reduce((acc, h) => acc + (h.total || 0), 0);
+      const hasActive = window.appState.activePurchase !== null;
+
+      container.innerHTML = `
+        <div class="space-y-5">
+          <div class="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-950 border border-emerald-500/20 shadow-xl relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+            
+            <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-2 uppercase tracking-wider">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+              <span>${daysRemainingText}</span>
+            </div>
+
+            <h2 class="text-2xl font-black text-white mb-2 tracking-tight">Pronto para ir ao Mercado?</h2>
+            <p class="text-xs text-slate-400 mb-5 leading-relaxed">Acompanhe preços antigos e o valor total subindo em tempo real no celular dos dois.</p>
+
+            <button onclick="vibrateSoft(); ${hasActive ? "switchTab('buying')" : "openSelectListModal()"}" 
+                    class="w-full py-4 px-5 rounded-2xl font-black text-base text-white bg-emerald-600 hover:bg-emerald-500 shadow-xl flex items-center justify-center gap-3 transition glow-green">
+              <i data-lucide="${hasActive ? 'play' : 'shopping-bag'}" class="w-6 h-6"></i>
+              <span>${hasActive ? 'CONTINUAR COMPRA ATIVA' : 'COMEÇAR COMPRA AGORA'}</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
+              <div class="text-slate-400 text-[11px] font-bold">Total Acumulado</div>
+              <div class="text-xl font-black text-emerald-400 mt-1">R$ ${totalSpentMonth.toFixed(2)}</div>
+            </div>
+            <div onclick="vibrateSoft(); openHistoryModal()" class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 cursor-pointer hover:border-emerald-500/50 transition">
+              <div class="text-slate-400 text-[11px] font-bold flex justify-between items-center">
+                <span>Histórico</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+              <div class="text-xl font-black text-white mt-1">${window.appState.history.length} listas</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.openHistoryModal = function() {
+      history.pushState({ modal: 'history' }, '');
+      const container = document.getElementById('historyListContainer');
+      const historyArr = window.appState.history;
+
+      if (historyArr.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs">Nenhuma compra no histórico ainda.</div>`;
+      } else {
+        container.innerHTML = historyArr.map((h, idx) => `
+          <div onclick="vibrateSoft(); openHistoryDetail(${idx})" class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center cursor-pointer hover:border-emerald-500/40 transition">
+            <div>
+              <div class="text-xs font-extrabold text-white">${h.listName}</div>
+              <div class="text-[10px] text-slate-400">${new Date(h.date).toLocaleDateString('pt-BR')} • ${h.items.length} itens</div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-black text-emerald-400">R$ ${(h.total || 0).toFixed(2)}</div>
+              <span class="text-[9px] text-slate-500">Ver detalhes ></span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('historyModal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    };
+
+    window.closeHistoryModal = function() {
+      document.getElementById('historyModal').classList.add('hidden');
+    };
+
+    window.openHistoryDetail = function(idx) {
+      history.pushState({ modal: 'historyDetail' }, '');
+      window.appState.currentViewingHistoryIdx = idx;
+      const h = window.appState.history[idx];
+      if (!h) return;
+
+      document.getElementById('historyModalTitle').innerText = h.listName;
+      document.getElementById('historyModalDate').innerText = "Realizada em: " + new Date(h.date).toLocaleDateString('pt-BR');
+      document.getElementById('historyModalTotal').innerText = `R$ ${(h.total || 0).toFixed(2)}`;
+      document.getElementById('historyModalBudget').innerText = h.budget > 0 ? `R$ ${h.budget.toFixed(2)}` : 'Não definido';
+
+      const itemsListContainer = document.getElementById('historyModalItemsList');
+      itemsListContainer.innerHTML = h.items.map(i => `
+        <div class="flex justify-between items-center p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs shrink-0">
+          <div class="flex items-center gap-2">
+            <span>${getItemIcon(i.name)}</span>
+            <div>
+              <div class="font-bold text-white">${i.name}</div>
+              <div class="text-[10px] text-slate-400">${i.qty}x • R$ ${i.price.toFixed(2)} un.</div>
+            </div>
+          </div>
+          <div class="font-black text-emerald-400">R$ ${(i.price * i.qty).toFixed(2)}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('historyDetailModal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    };
+
+    window.closeHistoryDetailModal = function() {
+      document.getElementById('historyDetailModal').classList.add('hidden');
+    };
+
+    window.deleteCurrentHistoryItem = function() {
+      const idx = window.appState.currentViewingHistoryIdx;
+      if (idx !== null && confirm("Deseja realmente apagar esta compra do histórico?")) {
+        window.appState.history.splice(idx, 1);
+        saveLocal('history');
+        closeHistoryDetailModal();
+        openHistoryModal();
+        renderApp();
+      }
+    };
+
+    function renderPlannerScreen(container) {
+      container.className = "flex-1 p-4 overflow-y-auto custom-scrollbar";
+      const activeSlot = window.appState.slots.find(s => s.id === window.appState.activePlannerSlot) || window.appState.slots[0];
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xl font-black text-white">Planejar Listas</h2>
+            <span class="text-xs text-slate-400">Monte sem preços</span>
+          </div>
+
+          <div class="flex gap-2 p-1.5 bg-slate-900 rounded-2xl border border-slate-800">
+            ${window.appState.slots.map(s => `
+              <button onclick="vibrateSoft(); setActivePlannerSlot('${s.id}')" class="flex-1 py-2.5 px-2 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${s.id === activeSlot.id ? 'bg-ifood-red text-white shadow-md glow-red' : 'text-slate-400 hover:text-white'}">
+                <span>${s.name}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full ${s.id === activeSlot.id ? 'bg-black/30 text-white' : 'bg-slate-800 text-slate-400'}">${s.items.length}</span>
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="p-3.5 bg-slate-900 rounded-2xl border border-slate-800 space-y-2">
+            <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Adicionar Produto</label>
+            <div class="flex gap-2">
+              <input type="text" id="plannerItemName" placeholder="Ex: Leite Integral 1L" onkeydown="if(event.key==='Enter') addPlannerItem()" class="flex-1 bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500">
+              <input type="number" id="plannerItemQty" value="1" min="1" onkeydown="if(event.key==='Enter') addPlannerItem()" class="w-16 bg-slate-950 border border-slate-700 text-white rounded-xl px-2 py-2.5 text-sm font-bold text-center focus:outline-none focus:border-red-500">
+              <button type="button" onclick="vibrateSoft(); addPlannerItem()" class="px-4 py-2.5 bg-ifood-red hover:bg-ifood-red-dark text-white font-black text-sm rounded-xl transition flex items-center justify-center glow-red">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            ${activeSlot.items.length === 0 ? `
+              <div class="p-8 text-center bg-slate-900/30 rounded-3xl border border-slate-800/50 text-slate-500 text-xs font-semibold">
+                Sua lista está vazia. Digite os produtos acima para começar!
+              </div>
+            ` : activeSlot.items.map((item, idx) => `
+              <div class="flex justify-between items-center p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800">
+                <div class="flex items-center gap-3">
+                  <span class="text-lg">${getItemIcon(item.name)}</span>
+                  <div>
+                    <span class="text-sm font-bold text-white">${item.name}</span>
+                    <span class="ml-2 text-xs font-extrabold ifood-red bg-red-950/40 px-2 py-0.5 rounded-md border border-red-900/30">${item.qty}x</span>
+                  </div>
+                </div>
+                <button onclick="vibrateSoft(); removePlannerItem(${idx})" class="text-slate-600 hover:text-red-400 p-1">
+                  <i data-lucide="trash-2" class="w-4.5 h-4.5"></i>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBuyingScreen(container) {
+      container.className = "flex-1 flex flex-col h-full overflow-hidden bg-slate-950";
+      if (!window.appState.activePurchase) {
+        switchTab('home');
+        return;
+      }
+
+      const p = window.appState.activePurchase;
+      const q = window.appState.searchQuery.toLowerCase().trim();
+
+      const filteredItems = p.items.map((item, originalIdx) => ({ item, originalIdx }))
+        .filter(({ item }) => item.name.toLowerCase().includes(q));
+
+      const total = p.items.reduce((acc, item) => item.checked ? acc + (item.price * item.qty) : acc, 0);
+      const checkedCount = p.items.filter(i => i.checked).length;
+      const isCollapsed = window.appState.isPricePanelCollapsed;
+      const budget = p.budget || 0;
+      const progressPct = budget > 0 ? Math.min((total / budget) * 100, 100) : 0;
+      const isOverBudget = budget > 0 && total > budget;
+
+      let statusColorClass = "text-emerald-400";
+      let progressBarColorClass = "bg-emerald-500";
+      if (budget > 0) {
+        if (total > budget) {
+          statusColorClass = "ifood-red font-black text-4xl animate-pulse";
+          progressBarColorClass = "bg-ifood-red";
+        } else if (progressPct >= 85) {
+          statusColorClass = "text-amber-400 font-bold";
+          progressBarColorClass = "bg-amber-400";
+        }
+      }
+
+      const selCount = window.appState.selectedForDeletion.length;
+
+      container.innerHTML = `
+        <div class="shrink-0 bg-slate-950 p-3 pb-2 border-b border-slate-900 shadow-xl z-20 transition-all">
+          <div class="p-3.5 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl relative">
+            
+            <button onclick="vibrateSoft(); togglePricePanel()" class="absolute top-3.5 right-3.5 p-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center">
+              <i data-lucide="${isCollapsed ? 'chevron-down' : 'chevron-up'}" class="w-5 h-5"></i>
+            </button>
+
+            ${isCollapsed ? `
+              <div class="flex items-center justify-between pr-10 py-0.5">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total:</span>
+                <span class="text-2xl font-black text-emerald-400 tracking-tight">R$ ${total.toFixed(2)}</span>
+              </div>
+            ` : `
+              <div class="space-y-3">
+                <div class="flex justify-between items-center pr-10">
+                  <h2 class="text-base font-black text-white tracking-tight truncate">${p.listName}</h2>
+                  <div class="flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+                    <span class="text-[9px] text-slate-400 font-bold uppercase">LIMITE R$:</span>
+                    <input type="number" value="${p.budget || ''}" placeholder="0" onchange="updatePurchaseBudget(this.value)" class="w-14 bg-transparent text-white font-extrabold text-xs focus:outline-none text-right">
+                  </div>
+                </div>
+
+                ${window.appState.coupleCode ? `
+                  <div class="flex items-center justify-center gap-1.5 py-0.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span class="text-[10px] font-extrabold text-emerald-400 tracking-wider uppercase">Casal Conectado ao Vivo</span>
+                  </div>
+                ` : ''}
+
+                <div class="text-center py-1 space-y-1">
+                  <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">TOTAL NO MERCADO</div>
+                  <div class="text-4xl font-black tracking-tight ${statusColorClass}">
+                    R$ ${total.toFixed(2)}
+                  </div>
+                  <div class="text-xs font-extrabold text-slate-400">
+                    ${checkedCount} de ${p.items.length} itens no carrinho
+                  </div>
+                </div>
+
+                ${budget > 0 ? `
+                  <div class="space-y-1">
+                    <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                      <div class="h-full ${progressBarColorClass} transition-all duration-300" style="width: ${progressPct}%"></div>
+                    </div>
+                    ${isOverBudget ? `
+                      <div class="text-center text-xs font-black ifood-red">
+                        Estourou R$ ${(total - budget).toFixed(2)} do limite!
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : ''}
+              </div>
+            `}
+
+          </div>
+        </div>
+
+        <div class="shrink-0 p-3 bg-slate-950 border-b border-slate-900/50 flex gap-2 z-10 items-center">
+          <div class="relative flex-1">
+            <input type="text" id="buySearchInput" value="${window.appState.searchQuery}" placeholder="Pesquisar ou adicionar..." oninput="handleBuySearch(this.value)" onkeydown="if(event.key==='Enter') addQuickBuyItem()" class="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-3.5 pr-8 py-2 text-xs focus:outline-none focus:border-emerald-500">
+            ${window.appState.searchQuery ? `
+              <button onclick="vibrateSoft(); clearBuySearch()" class="absolute right-2.5 top-2 text-slate-500 hover:text-white">
+                <i data-lucide="x-circle" class="w-4 h-4"></i>
+              </button>
+            ` : ''}
+          </div>
+          <button onclick="vibrateSoft(); addQuickBuyItem()" title="Adicionar item" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md glow-green shrink-0">
+            <i data-lucide="plus" class="w-4 h-4"></i> Adicionar
+          </button>
+          ${window.appState.isSelectionMode && selCount > 0 ? `
+            <button onclick="vibrateSoft(); openDeleteModal()" title="Excluir selecionados" class="px-3 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md shrink-0">
+              <i data-lucide="trash-2" class="w-4 h-4"></i> (${selCount})
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+          ${filteredItems.length === 0 ? `
+            <div class="p-6 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 text-xs">
+              Nenhum item encontrado com "<b>${window.appState.searchQuery}</b>".<br>Use o campo acima para adicionar!
+            </div>
+          ` : filteredItems.map(({ item, originalIdx }) => {
+            const isSelectedForDel = window.appState.selectedForDeletion.includes(originalIdx);
+            const userModifier = item.updatedBy;
+
+            return `
+              <div class="rounded-2xl border transition overflow-hidden ${item.checked ? 'bg-emerald-950/15 border-emerald-500/30' : 'bg-slate-900 border-slate-800'} ${isSelectedForDel ? 'border-red-500 bg-red-950/20' : ''}"
+                   onmousedown="startLongPress(${originalIdx})" 
+                   ontouchstart="startLongPress(${originalIdx})" 
+                   onmouseup="cancelLongPress()" 
+                   ontouchend="cancelLongPress()"
+                   onclick="handleItemNormalClick(${originalIdx})">
+                
+                <div class="p-3 flex items-center justify-between gap-2 cursor-pointer">
+                  <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                    ${window.appState.isSelectionMode ? `
+                      <input type="checkbox" ${isSelectedForDel ? 'checked' : ''} onclick="event.stopPropagation(); vibrateSoft(); toggleSelectForDeletion(${originalIdx})" class="w-5 h-5 accent-red-500 rounded cursor-pointer shrink-0">
+                    ` : `
+                      <input type="checkbox" ${item.checked ? 'checked' : ''} onclick="event.stopPropagation(); vibrateSoft(); toggleBuyItemCheck(${originalIdx})" class="w-5 h-5 accent-emerald-500 rounded cursor-pointer shrink-0">
+                    `}
+                    <span class="text-lg">${getItemIcon(item.name)}</span>
+                    <div class="truncate">
+                      <span class="text-xs font-bold ${item.checked ? 'line-through text-slate-500' : 'text-white'}">${item.name}</span>
+                      <div class="text-[10px] text-slate-400 flex items-center gap-2">
+                        <span>Qtd: <b>${item.qty}x</b></span>
+                        <span>•</span>
+                        <span class="font-black text-emerald-400">R$ ${(item.price * item.qty).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="shrink-0 flex items-center">
+                    ${window.appState.isSelectionMode ? `
+                      <span class="text-slate-500 text-[10px] font-bold">Selecionando</span>
+                    ` : userModifier && (userModifier.pic || userModifier.name) ? `
+                      <div class="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-full border border-emerald-500/50 shadow-sm" title="Modificado por ${userModifier.name}">
+                        <div class="w-5 h-5 rounded-full bg-slate-800 border-2 border-emerald-400 overflow-hidden flex items-center justify-center text-[9px] font-black text-white shrink-0">
+                          ${userModifier.pic ? `<img src="${userModifier.pic}" class="w-full h-full object-cover">` : userModifier.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span class="text-[9px] font-bold text-emerald-400 truncate max-w-[50px]">${userModifier.name}</span>
+                      </div>
+                    ` : `
+                      <span class="text-slate-500 text-[10px] font-bold">Toque p/ preço</span>
+                    `}
+                  </div>
+
+                </div>
+              </div>
+            `;
+          }).join('')}
+
+          <div class="pt-3 pb-4">
+            <button onclick="vibrateSoft(); openFinishModal()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-sm transition shadow-xl flex items-center justify-center gap-2 glow-green">
+              <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+              <span>FINALIZAR E GUARDAR NO HISTÓRICO</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    window.togglePricePanel = function() {
+      vibrateSoft();
+      window.appState.isPricePanelCollapsed = !window.appState.isPricePanelCollapsed;
+      renderApp();
+    };
+
+    let longPressTimer = null;
+    window.startLongPress = function(idx) {
+      if (window.appState.isSelectionMode) return;
+      longPressTimer = setTimeout(() => {
+        window.appState.isSelectionMode = true;
+        window.appState.selectedForDeletion = [idx];
+        vibrateSoft();
+        renderApp();
+      }, 800);
+    };
+
+    window.cancelLongPress = function() {
+      if (longPressTimer) clearTimeout(longPressTimer);
+    };
+
+    window.handleItemNormalClick = function(idx) {
+      vibrateSoft();
+      if (window.appState.isSelectionMode) {
+        toggleSelectForDeletion(idx);
+        return;
+      }
+      const item = window.appState.activePurchase.items[idx];
+      window.appState.editingItemIdx = idx;
+      window.appState.tempEditQty = item.qty || 1;
+
+      document.getElementById('modalItemIcon').innerText = getItemIcon(item.name);
+      document.getElementById('modalItemTitle').innerText = item.name;
+      document.getElementById('modalItemQtyVal').innerText = window.appState.tempEditQty;
+      document.getElementById('modalItemPriceInput').value = item.price > 0 ? item.price : '';
+
+      let pastInfo = null;
+      for (const hist of window.appState.history) {
+        const found = hist.items.find(i => i.name.toLowerCase() === item.name.toLowerCase() && i.price > 0);
+        if (found) {
+          pastInfo = { price: found.price, date: new Date(hist.date).toLocaleDateString('pt-BR') };
+          break;
+        }
+      }
+
+      const histBox = document.getElementById('modalItemHistoryBox');
+      if (pastInfo) {
+        histBox.innerHTML = `Última compra (${pastInfo.date}): <b class="text-white">R$ ${pastInfo.price.toFixed(2)}</b>`;
+      } else {
+        histBox.innerHTML = `Nenhum histórico anterior para este produto.`;
+      }
+
+      document.getElementById('itemDetailModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('modalItemPriceInput').focus(), 100);
+    };
+
+    window.closeItemDetailModal = function() {
+      document.getElementById('itemDetailModal').classList.add('hidden');
+      window.appState.editingItemIdx = null;
+    };
+
+    window.changeModalQty = function(delta) {
+      const q = window.appState.tempEditQty + delta;
+      if (q >= 1) {
+        window.appState.tempEditQty = q;
+        document.getElementById('modalItemQtyVal').innerText = q;
+      }
+    };
+
+    window.saveItemDetailModal = function() {
+      const idx = window.appState.editingItemIdx;
+      if (idx !== null && window.appState.activePurchase) {
+        const item = window.appState.activePurchase.items[idx];
+        const priceVal = parseFloat(document.getElementById('modalItemPriceInput').value) || 0;
+        
+        item.qty = window.appState.tempEditQty;
+        item.price = priceVal;
+        if (priceVal > 0) item.checked = true;
+        item.updatedBy = { name: window.appState.userName || 'Eu', pic: window.appState.userPic || '' };
+
+        saveLocal('activePurchase');
+        closeItemDetailModal();
+        renderApp();
+      }
+    };
+
+    window.toggleBuyItemCheck = function(idx) {
+      if (window.appState.activePurchase) {
+        const item = window.appState.activePurchase.items[idx];
+        item.checked = !item.checked;
+        item.updatedBy = { name: window.appState.userName || 'Eu', pic: window.appState.userPic || '' };
+        saveLocal('activePurchase');
+        renderApp();
+      }
+    };
+
+    window.toggleSelectForDeletion = function(idx) {
+      const list = window.appState.selectedForDeletion;
+      const pos = list.indexOf(idx);
+      if (pos > -1) list.splice(pos, 1);
+      else list.push(idx);
+
+      if (list.length === 0) {
+        window.appState.isSelectionMode = false;
+      }
+      renderApp();
+    };
+
+    window.openDeleteModal = function() {
+      document.getElementById('deleteModalText').innerText = `Deseja realmente excluir os ${window.appState.selectedForDeletion.length} item(ns) selecionado(s)?`;
+      document.getElementById('deleteConfirmModal').classList.remove('hidden');
+    };
+
+    window.closeDeleteModal = function() {
+      document.getElementById('deleteConfirmModal').classList.add('hidden');
+    };
+
+    window.executeDeleteSelected = function() {
+      if (window.appState.activePurchase) {
+        const indices = [...window.appState.selectedForDeletion].sort((a, b) => b - a);
+        for (const idx of indices) {
+          window.appState.activePurchase.items.splice(idx, 1);
+        }
+        window.appState.selectedForDeletion = [];
+        window.appState.isSelectionMode = false;
+        saveLocal('activePurchase');
+        renderApp();
+      }
+      closeDeleteModal();
+    };
+
+    window.openFinishModal = function() {
+      if (!window.appState.activePurchase) return;
+      const p = window.appState.activePurchase;
+      const totalItems = p.items.length;
+      const checkedCount = p.items.filter(i => i.checked).length;
+      const uncheckedItems = totalItems - checkedCount;
+      const total = p.items.reduce((acc, i) => i.checked ? acc + (i.price * i.qty) : acc, 0);
+      const budget = p.budget || 0;
+
+      let financialStatusHTML = `<span class="text-emerald-400 font-bold">Dentro do orçamento!</span>`;
+      if (budget > 0) {
+        if (total > budget) {
+          financialStatusHTML = `<span class="text-red-400 font-black">Passou R$ ${(total - budget).toFixed(2)} do limite!</span>`;
+        } else {
+          financialStatusHTML = `<span class="text-emerald-400 font-bold">Sobrou R$ ${(budget - total).toFixed(2)} do limite!</span>`;
+        }
+      }
+
+      const content = document.getElementById('finishModalContent');
+      content.innerHTML = `
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Total de itens no carrinho:</span>
+            <span class="font-bold text-white">${checkedCount} de ${totalItems}</span>
+          </div>
+          ${uncheckedItems > 0 ? `
+            <div class="text-amber-400 text-[11px] font-semibold flex items-center gap-1">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+              <span>Atenção: Faltou marcar ${uncheckedItems} item(ns)!</span>
+            </div>
+          ` : `
+            <div class="text-emerald-400 text-[11px] font-semibold">
+              ✓ Todos os itens foram marcados!
+            </div>
+          `}
+        </div>
+
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">Valor Total:</span>
+            <span class="text-base font-black text-emerald-400">R$ ${total.toFixed(2)}</span>
+          </div>
+          ${budget > 0 ? `
+            <div class="flex justify-between items-center border-t border-slate-900 pt-1.5">
+              <span class="text-slate-400">Situação:</span>
+              <span class="text-right">${financialStatusHTML}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <p class="text-[11px] text-slate-400 text-center">Deseja realmente encerrar a compra e salvá-la no histórico?</p>
+      `;
+
+      document.getElementById('finishConfirmModal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    };
+
+    window.closeFinishModal = function() {
+      document.getElementById('finishConfirmModal').classList.add('hidden');
+    };
+
+    window.confirmFinishPurchase = function() {
+      closeFinishModal();
+      if (!window.appState.activePurchase) return;
+      const p = window.appState.activePurchase;
+      const checkedItems = p.items.items ? p.items.filter(i => i.checked) : p.items.filter(i => i.checked);
+      const total = checkedItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+
+      window.appState.history.unshift({
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        listName: p.listName,
+        budget: p.budget || 0,
+        total: total,
+        items: p.items
+      });
+
+      window.appState.activePurchase = null;
+      saveLocal();
+      switchTab('home');
+    };
+
+    function renderChatScreen(container) {
+      container.className = "flex-1 flex flex-col h-full overflow-hidden p-3";
+      const messages = window.appState.messages || [];
+
+      container.innerHTML = `
+        <div class="flex justify-end items-center pb-2 shrink-0">
+          ${messages.length > 0 ? `
+            <button onclick="vibrateSoft(); promptClearChat()" class="text-slate-500 hover:text-red-400 text-xs flex items-center gap-1 font-bold bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-800">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Limpar Chat
+            </button>
+          ` : ''}
+        </div>
+
+        <div id="chatMessagesBox" class="flex-1 overflow-y-auto space-y-3 py-2 px-1 custom-scrollbar flex flex-col-reverse">
+          ${messages.length === 0 ? `
+            <div class="my-auto text-center text-slate-500 text-xs py-10">
+              Nenhuma mensagem ainda.<br>Mande um aviso, foto ou pedido para seu casal!
+            </div>
+          ` : messages.slice().reverse().map(m => {
+            const isMe = m.sender === window.appState.userName || m.sender === 'Eu';
+            return `
+              <div class="relative group flex gap-2 items-end ${isMe ? 'flex-row-reverse' : 'flex-row'}">
+                <div class="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0 text-[10px] font-bold text-white">
+                  ${m.userPic ? `<img src="${m.userPic}" class="w-full h-full object-cover">` : m.sender.charAt(0).toUpperCase()}
+                </div>
+
+                <div class="chat-msg-box p-3 rounded-2xl max-w-[80%] cursor-pointer select-none ${isMe ? 'bg-red-950/50 border border-red-500/40 text-right' : 'bg-slate-900 border border-slate-800 text-left'}"
+                     onmousedown="startMsgLongPress('${m.id}')" 
+                     ontouchstart="startMsgLongPress('${m.id}')" 
+                     onmouseup="cancelMsgLongPress()" 
+                     ontouchend="cancelMsgLongPress()"
+                     onclick="toggleChatMsgMenu('${m.id}')">
+                  
+                  ${m.replyTo ? `
+                    <div class="mb-2 p-2 rounded-lg bg-slate-950/80 border-l-2 border-red-500 text-left text-[11px] space-y-0.5">
+                      <div class="font-bold text-red-400">${m.replyTo.sender}</div>
+                      <div class="text-slate-300 truncate">${m.replyTo.text || '[Mensagem]'}</div>
+                    </div>
+                  ` : ''}
+
+                  <div class="text-[10px] font-extrabold mb-1 flex justify-between items-center gap-3">
+                    <span class="${isMe ? 'text-red-300' : 'text-purple-400'}">${m.sender}</span>
+                    <span class="text-slate-500 font-normal">${m.time}</span>
+                  </div>
+
+                  ${m.image ? `
+                    <div class="mb-2 overflow-hidden rounded-xl border border-slate-800 max-w-[200px]" onclick="event.stopPropagation(); openImageZoom('${m.image}')">
+                      <img src="${m.image}" class="w-full h-auto object-cover max-h-48">
+                    </div>
+                  ` : ''}
+
+                  ${m.text ? `<div class="text-sm text-white font-medium break-words">${m.text}</div>` : ''}
+
+                  ${m.reaction ? `
+                    <div class="mt-1.5 inline-block px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-xs shadow-sm">
+                      ${m.reaction}
+                    </div>
+                  ` : ''}
+                </div>
+
+                ${window.appState.activeMenuMsgId === m.id ? `
+                  <div class="absolute z-30 ${isMe ? 'right-9' : 'left-9'} -top-12 bg-slate-900 border border-slate-700 rounded-2xl px-3 py-2 flex items-center gap-3 shadow-2xl">
+                    <button onclick="event.stopPropagation(); vibrateSoft(); setReplyMessage('${m.id}')" class="text-xs text-slate-200 hover:text-white flex items-center gap-1 font-bold">
+                      <i data-lucide="reply" class="w-3.5 h-3.5 text-ifood-red"></i> Responder
+                    </button>
+                    <button onclick="event.stopPropagation(); vibrateSoft(); toggleReactionPicker('${m.id}')" class="text-xs text-slate-200 hover:text-white flex items-center gap-1 font-bold">
+                      <i data-lucide="smile" class="w-3.5 h-3.5 text-amber-400"></i> Reagir
+                    </button>
+                    <button onclick="event.stopPropagation(); vibrateSoft(); deleteSingleMessage('${m.id}')" class="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-bold">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Apagar
+                    </button>
+                  </div>
+                ` : ''}
+
+                ${window.appState.activeReactionMsgId === m.id ? `
+                  <div class="absolute z-30 ${isMe ? 'right-9' : 'left-9'} -top-12 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 flex gap-2.5 shadow-2xl items-center">
+                    <button onclick="event.stopPropagation(); vibrateSoft(); reactToMessage('${m.id}', '👍')" class="hover:scale-125 transition text-base">👍</button>
+                    <button onclick="event.stopPropagation(); vibrateSoft(); reactToMessage('${m.id}', '❤️')" class="hover:scale-125 transition text-base">❤️</button>
+                    <button onclick="event.stopPropagation(); vibrateSoft(); reactToMessage('${m.id}', '😂')" class="hover:scale-125 transition text-base">😂</button>
+                    <button onclick="event.stopPropagation(); vibrateSoft(); reactToMessage('${m.id}', '💲')" class="hover:scale-125 transition text-base">💲</button>
+                    <button onclick="event.stopPropagation(); vibrateSoft(); reactToMessage('${m.id}', '😱')" class="hover:scale-125 transition text-base">😱</button>
+                  </div>
+                ` : ''}
+
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        ${window.appState.replyToMsg ? `
+          <div class="p-2.5 bg-slate-900 border-l-4 border-red-500 rounded-r-xl flex justify-between items-center text-xs shrink-0 mb-2">
+            <div>
+              <span class="font-bold text-red-400">Respondendo a ${window.appState.replyToMsg.sender}:</span>
+              <p class="text-slate-300 truncate max-w-[220px]">${window.appState.replyToMsg.text || '[Foto/Mensagem]'}</p>
+            </div>
+            <button onclick="vibrateSoft(); cancelReply()" class="text-slate-500 hover:text-white p-1">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        ` : ''}
+
+        <div class="p-2 bg-slate-900 rounded-2xl border border-slate-800 flex items-center gap-1.5 shrink-0 mt-2">
+          <button onclick="vibrateSoft(); document.getElementById('chatImageInput').click()" title="Tirar foto ou enviar imagem" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center justify-center shrink-0">
+            <i data-lucide="camera" class="w-5 h-5 text-red-400"></i>
+          </button>
+          <input type="file" id="chatImageInput" accept="image/*" capture="environment" class="hidden" onchange="handleChatImageUpload(this)">
+
+          <input type="text" id="chatInput" placeholder="Digite uma mensagem..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-red-500">
+          
+          <button onclick="vibrateSoft(); sendChatMessage()" class="px-3.5 py-2.5 bg-ifood-red hover:bg-ifood-red-dark text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md glow-red">
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    window.handleChatImageUpload = function(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 600;
+            const MAX_HEIGHT = 600;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+
+            window.appState.messages.push({
+              id: Date.now().toString(),
+              sender: window.appState.userName || 'Eu',
+              userPic: window.appState.userPic || '',
+              text: '',
+              image: compressedDataUrl,
+              replyTo: window.appState.replyToMsg,
+              reaction: null,
+              time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            window.appState.replyToMsg = null;
+            saveLocal('messages');
+            renderApp();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    };
+
+    window.openImageZoom = function(imgSrc) {
+      history.pushState({ modal: 'imageZoom' }, '');
+      document.getElementById('zoomedImageElement').src = imgSrc;
+      document.getElementById('imageZoomModal').classList.remove('hidden');
+    };
+
+    window.closeImageZoom = function() {
+      document.getElementById('imageZoomModal').classList.add('hidden');
+    };
+
+    let msgLongPressTimer = null;
+    window.startMsgLongPress = function(msgId) {
+      msgLongPressTimer = setTimeout(() => {
+        vibrateSoft();
+        window.appState.activeMenuMsgId = msgId;
+        window.appState.activeReactionMsgId = null;
+        renderApp();
+      }, 600);
+    };
+
+    window.cancelMsgLongPress = function() {
+      if (msgLongPressTimer) clearTimeout(msgLongPressTimer);
+    };
+
+    window.toggleChatMsgMenu = function(msgId) {
+      vibrateSoft();
+      window.appState.activeMenuMsgId = (window.appState.activeMenuMsgId === msgId) ? null : msgId;
+      window.appState.activeReactionMsgId = null;
+      renderApp();
+    };
+
+    window.setReplyMessage = function(msgId) {
+      const msg = window.appState.messages.find(m => m.id === msgId);
+      if (msg) {
+        window.appState.replyToMsg = { sender: msg.sender, text: msg.text || '[Foto]' };
+        window.appState.activeMenuMsgId = null;
+        renderApp();
+        const input = document.getElementById('chatInput');
+        if (input) input.focus();
+      }
+    };
+
+    window.cancelReply = function() {
+      window.appState.replyToMsg = null;
+      renderApp();
+    };
+
+    window.toggleReactionPicker = function(msgId) {
+      window.appState.activeMenuMsgId = null;
+      window.appState.activeReactionMsgId = (window.appState.activeReactionMsgId === msgId) ? null : msgId;
+      renderApp();
+    };
+
+    window.reactToMessage = function(msgId, emoji) {
+      const msg = window.appState.messages.find(m => m.id === msgId);
+      if (msg) {
+        msg.reaction = (msg.reaction === emoji) ? null : emoji;
+        window.appState.activeReactionMsgId = null;
+        window.appState.activeMenuMsgId = null;
+        saveLocal('messages');
+        renderApp();
+      }
+    };
+
+    window.deleteSingleMessage = function(msgId) {
+      const idx = window.appState.messages.findIndex(m => m.id === msgId);
+      if (idx !== -1) {
+        window.appState.messages.splice(idx, 1);
+        window.appState.activeMenuMsgId = null;
+        saveLocal('messages');
+        renderApp();
+      }
+    };
+
+    window.promptClearChat = function() {
+      document.getElementById('clearChatConfirmModal').classList.remove('hidden');
+    };
+
+    window.closeClearChatModal = function() {
+      document.getElementById('clearChatConfirmModal').classList.add('hidden');
+    };
+
+    window.executeClearChat = function() {
+      window.appState.messages = [];
+      localStorage.removeItem('carrinho_messages');
+      saveLocal('messages');
+      closeClearChatModal();
+      renderApp();
+    };
+
+    window.sendChatMessage = function() {
+      const input = document.getElementById('chatInput');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+      window.appState.messages.push({
+        id: Date.now().toString(),
+        sender: window.appState.userName || 'Eu',
+        userPic: window.appState.userPic || '',
+        text: text,
+        image: null,
+        replyTo: window.appState.replyToMsg,
+        reaction: null,
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      });
+      window.appState.replyToMsg = null;
+      if (input) input.value = '';
+      saveLocal('messages');
+      renderApp();
+    };
+
+    function renderCalculatorScreen(container) {
+      container.className = "flex-1 flex flex-col h-full bg-black p-4 justify-end select-none";
+      const displayVal = window.appState.calcDisplay;
+
+      container.innerHTML = `
+        <div class="flex-1 flex flex-col justify-end pb-3">
+          <div class="text-right text-slate-400 text-sm font-light min-h-[20px] px-2">${window.appState.calcEquation || ''}</div>
+          <div class="text-right text-white text-6xl font-light tracking-tight px-2 overflow-x-auto">${displayVal}</div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-3 pb-2">
+          <button onclick="vibrateSoft(); calcAction('ac')" class="h-16 rounded-full bg-slate-400 text-black font-semibold text-xl flex items-center justify-center active:bg-slate-300 transition">AC</button>
+          <button onclick="vibrateSoft(); calcAction('pm')" class="h-16 rounded-full bg-slate-400 text-black font-semibold text-xl flex items-center justify-center active:bg-slate-300 transition">+/-</button>
+          <button onclick="vibrateSoft(); calcAction('percent')" class="h-16 rounded-full bg-slate-400 text-black font-semibold text-xl flex items-center justify-center active:bg-slate-300 transition">%</button>
+          <button onclick="vibrateSoft(); calcAction('op', '÷')" class="h-16 rounded-full bg-amber-500 text-white font-semibold text-2xl flex items-center justify-center active:bg-amber-400 transition">÷</button>
+
+          <button onclick="vibrateSoft(); calcAction('num', '7')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">7</button>
+          <button onclick="vibrateSoft(); calcAction('num', '8')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">8</button>
+          <button onclick="vibrateSoft(); calcAction('num', '9')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">9</button>
+          <button onclick="vibrateSoft(); calcAction('op', '×')" class="h-16 rounded-full bg-amber-500 text-white font-semibold text-2xl flex items-center justify-center active:bg-amber-400 transition">×</button>
+
+          <button onclick="vibrateSoft(); calcAction('num', '4')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">4</button>
+          <button onclick="vibrateSoft(); calcAction('num', '5')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">5</button>
+          <button onclick="vibrateSoft(); calcAction('num', '6')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">6</button>
+          <button onclick="vibrateSoft(); calcAction('op', '-')" class="h-16 rounded-full bg-amber-500 text-white font-semibold text-2xl flex items-center justify-center active:bg-amber-400 transition">-</button>
+
+          <button onclick="vibrateSoft(); calcAction('num', '1')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">1</button>
+          <button onclick="vibrateSoft(); calcAction('num', '2')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">2</button>
+          <button onclick="vibrateSoft(); calcAction('num', '3')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">3</button>
+          <button onclick="vibrateSoft(); calcAction('op', '+')" class="h-16 rounded-full bg-amber-500 text-white font-semibold text-2xl flex items-center justify-center active:bg-amber-400 transition">+</button>
+
+          <button onclick="vibrateSoft(); calcAction('num', '0')" class="col-span-2 h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-start pl-7 active:bg-slate-700 transition">0</button>
+          <button onclick="vibrateSoft(); calcAction('decimal')" class="h-16 rounded-full bg-slate-800 text-white font-semibold text-2xl flex items-center justify-center active:bg-slate-700 transition">,</button>
+          <button onclick="vibrateSoft(); calcAction('equals')" class="h-16 rounded-full bg-amber-500 text-white font-semibold text-2xl flex items-center justify-center active:bg-amber-400 transition">=</button>
+        </div>
+      `;
+    }
+
+    window.calcAction = function(type, val) {
+      let st = window.appState;
+      if (type === 'ac') {
+        st.calcDisplay = '0';
+        st.calcEquation = '';
+        st.calcStoredVal = null;
+        st.calcOperation = null;
+        st.calcResetNext = false;
+      } else if (type === 'num') {
+        if (st.calcDisplay === '0' || st.calcResetNext) {
+          st.calcDisplay = val;
+          st.calcResetNext = false;
+        } else {
+          if (st.calcDisplay.length < 9) st.calcDisplay += val;
+        }
+      } else if (type === 'decimal') {
+        if (st.calcResetNext) {
+          st.calcDisplay = '0,';
+          st.calcResetNext = false;
+        } else if (!st.calcDisplay.includes(',')) {
+          st.calcDisplay += ',';
+        }
+      } else if (type === 'op') {
+        st.calcStoredVal = parseFloat(st.calcDisplay.replace(',', '.'));
+        st.calcOperation = val;
+        st.calcEquation = `${st.calcDisplay} ${val}`;
+        st.calcResetNext = true;
+      } else if (type === 'equals') {
+        if (st.calcOperation && st.calcStoredVal !== null) {
+          const current = parseFloat(st.calcDisplay.replace(',', '.'));
+          let res = 0;
+          if (st.calcOperation === '+') res = st.calcStoredVal + current;
+          if (st.calcOperation === '-') res = st.calcStoredVal - current;
+          if (st.calcOperation === '×') res = st.calcStoredVal * current;
+          if (st.calcOperation === '÷') res = current !== 0 ? st.calcStoredVal / current : 0;
+
+          st.calcDisplay = res.toString().replace('.', ',');
+          st.calcEquation = '';
+          st.calcStoredVal = null;
+          st.calcOperation = null;
+          st.calcResetNext = true;
+        }
+      } else if (type === 'pm') {
+        let num = parseFloat(st.calcDisplay.replace(',', '.')) * -1;
+        st.calcDisplay = num.toString().replace('.', ',');
+      } else if (type === 'percent') {
+        let num = parseFloat(st.calcDisplay.replace(',', '.')) / 100;
+        st.calcDisplay = num.toString().replace('.', ',');
+      }
+      renderApp();
+    };
+
+    window.handleBuySearch = function(val) {
+      window.appState.searchQuery = val;
+      renderApp();
+      const input = document.getElementById('buySearchInput');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(val.length, val.length);
+      }
+    };
+
+    window.clearBuySearch = function() {
+      window.appState.searchQuery = '';
+      renderApp();
+    };
+
+    window.addQuickBuyItem = function() {
+      const input = document.getElementById('buySearchInput');
+      const val = input ? input.value.trim() : '';
+      if (!val || !window.appState.activePurchase) return;
+      window.appState.activePurchase.items.push({
+        name: val,
+        qty: 1,
+        price: 0,
+        checked: false,
+        updatedBy: { name: window.appState.userName || 'Eu', pic: window.appState.userPic || '' }
+      });
+      window.appState.searchQuery = '';
+      saveLocal('activePurchase');
+      renderApp();
+    };
+
+    window.setActivePlannerSlot = function(slotId) {
+      window.appState.activePlannerSlot = slotId;
+      renderApp();
+    };
+
+    window.addPlannerItem = function() {
+      const nameInput = document.getElementById('plannerItemName');
+      const qtyInput = document.getElementById('plannerItemQty');
+      if (!nameInput || !nameInput.value.trim()) return;
+      const slot = window.appState.slots.find(s => s.id === window.appState.activePlannerSlot);
+      if (slot) {
+        slot.items.push({ name: nameInput.value.trim(), qty: parseInt(qtyInput.value) || 1 });
+        saveLocal('slots');
+        renderApp();
+      }
+    };
+
+    window.removePlannerItem = function(idx) {
+      const slot = window.appState.slots.find(s => s.id === window.appState.activePlannerSlot);
+      if (slot) {
+        slot.items.splice(idx, 1);
+        saveLocal('slots');
+        renderApp();
+      }
+    };
+
+    window.openSelectListModal = function() {
+      const container = document.getElementById('listOptionsContainer');
+      container.innerHTML = window.appState.slots.map(s => `
+        <button onclick="vibrateSoft(); startPurchaseFromSlot('${s.id}')" ${s.items.length === 0 ? 'disabled' : ''} class="w-full p-3.5 rounded-2xl border text-left flex justify-between items-center transition ${s.items.length === 0 ? 'bg-slate-950/40 border-slate-800/40 opacity-50 cursor-not-allowed' : 'bg-slate-800/60 border-slate-700 hover:bg-slate-800'}">
+          <div>
+            <div class="text-sm font-extrabold text-white">${s.name}</div>
+            <div class="text-[11px] text-slate-400">${s.items.length} produtos adicionados</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+        </button>
+      `).join('');
+      document.getElementById('selectListModal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    };
+
+    window.closeSelectListModal = function() {
+      document.getElementById('selectListModal').classList.add('hidden');
+    };
+
+    window.startPurchaseFromSlot = function(slotId) {
+      const slot = window.appState.slots.find(s => s.id === slotId);
+      if (!slot || slot.items.length === 0) return;
+      window.appState.activePurchase = {
+        listName: slot.name,
+        budget: 0,
+        items: slot.items.map(i => ({ name: i.name, qty: i.qty, price: 0, checked: false, updatedBy: null }))
+      };
+      closeSelectListModal();
+      saveLocal('activePurchase');
+      switchTab('buying');
+    };
+
+    window.updatePurchaseBudget = function(val) {
+      if (window.appState.activePurchase) {
+        window.appState.activePurchase.budget = parseFloat(val) || 0;
+        saveLocal('activePurchase');
+        renderApp();
+      }
+    };
+
+    window.openSyncModal = function() {
+      document.getElementById('coupleCodeInput').value = window.appState.coupleCode;
+      document.getElementById('userNameInput').value = window.appState.userName;
+      
+      const picPreview = document.getElementById('profilePicPreview');
+      const picPlaceholder = document.getElementById('profilePicPlaceholder');
+      if (window.appState.userPic) {
+        picPreview.src = window.appState.userPic;
+        picPreview.classList.remove('hidden');
+        picPlaceholder.classList.add('hidden');
+      } else {
+        picPreview.classList.add('hidden');
+        picPlaceholder.classList.remove('hidden');
+      }
+
+      document.getElementById('syncModal').classList.remove('hidden');
+    };
+
+    window.closeSyncModal = function() {
+      document.getElementById('syncModal').classList.add('hidden');
+    };
+
+    window.handleProfilePicUpload = function(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          window.appState.userPic = e.target.result;
+          const picPreview = document.getElementById('profilePicPreview');
+          const picPlaceholder = document.getElementById('profilePicPlaceholder');
+          picPreview.src = window.appState.userPic;
+          picPreview.classList.remove('hidden');
+          picPlaceholder.classList.add('hidden');
+          vibrateSoft();
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    };
+
+    window.generateRandomCode = function() {
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      document.getElementById('coupleCodeInput').value = `CASAL-${rand}`;
+    };
+
+    window.saveSyncCode = function() {
+      const code = document.getElementById('coupleCodeInput').value.trim().toUpperCase();
+      const name = document.getElementById('userNameInput').value.trim();
+      window.appState.coupleCode = code;
+      if (name) window.appState.userName = name;
+      saveLocal();
+      closeSyncModal();
+      setupFirestoreSync();
+      renderApp();
+    };
+
+    renderApp();
+  </script>
+</body>
+</html>

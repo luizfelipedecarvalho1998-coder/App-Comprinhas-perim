@@ -1,0 +1,14 @@
+COMO GERAR O APK (sem instalar nada no PC)
+
+1. Crie uma conta grátis em github.com e um repositório novo (pode ser privado).
+2. Envie TODO o conteúdo desta pasta para o repositório (botão "Add file > Upload files").
+   Atenção: a pasta oculta ".github" precisa ir junto.
+3. Abra a aba "Actions" > "Gerar APK" > "Run workflow". Aguarde ~5 a 8 minutos.
+4. Clique na execução concluída > "Artifacts" > baixe "carrinho-certo-apk".
+5. Descompacte, passe o app-debug.apk para o Android e instale
+   (permita "instalar apps desconhecidos" quando o Android pedir).
+
+IMPORTANTE:
+- Abra o app UMA VEZ com internet em cada celular e coloque o mesmo código do casal.
+  Depois disso funciona offline e sincroniza sozinho ao reconectar.
+- Para atualizar o app no futuro: troque o www/index.html no GitHub e rode o workflow de novo.

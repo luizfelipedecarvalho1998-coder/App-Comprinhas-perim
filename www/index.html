@@ -381,7 +381,7 @@
       const app = initializeApp(firebaseConfig);
       auth = getAuth(app);
       // Cache offline: alterações feitas sem internet ficam na fila e sobem sozinhas ao reconectar
-      db = initializeFirestore(app, { localCache: persistentLocalCache() });
+      db = initializeFirestore(app, { localCache: persistentLocalCache(), ignoreUndefinedProperties: true });
 
       const connectAuth = () => signInAnonymously(auth).then(() => {
         window.appState.dbConnected = true;
@@ -408,19 +408,28 @@
     };
 
     window.saveLocal = function(fieldToUpdate = null) {
-      localStorage.setItem('carrinho_slots', JSON.stringify(window.appState.slots));
-      localStorage.setItem('carrinho_active_purchase', JSON.stringify(window.appState.activePurchase));
-      localStorage.setItem('carrinho_history', JSON.stringify(window.appState.history));
-      localStorage.setItem('carrinho_messages', JSON.stringify(window.appState.messages));
-      localStorage.setItem('carrinho_unread_count', window.appState.unreadCount.toString());
-      localStorage.setItem('carrinho_couple_code', window.appState.coupleCode);
-      localStorage.setItem('carrinho_user_name', window.appState.userName);
-      localStorage.setItem('carrinho_user_pic', window.appState.userPic);
-      
+      try {
+        localStorage.setItem('carrinho_slots', JSON.stringify(window.appState.slots));
+        localStorage.setItem('carrinho_active_purchase', JSON.stringify(window.appState.activePurchase));
+        localStorage.setItem('carrinho_history', JSON.stringify(window.appState.history));
+        localStorage.setItem('carrinho_messages', JSON.stringify(window.appState.messages));
+        localStorage.setItem('carrinho_unread_count', window.appState.unreadCount.toString());
+        localStorage.setItem('carrinho_couple_code', window.appState.coupleCode);
+        localStorage.setItem('carrinho_user_name', window.appState.userName);
+        localStorage.setItem('carrinho_user_pic', window.appState.userPic);
+      } catch (e) { console.warn("localStorage:", e); }
+
       if (window.appState.coupleCode && window.appState.dbConnected && db && !window.__applyingRemote) {
-        syncToFirestore(fieldToUpdate);
+        try { syncToFirestore(fieldToUpdate); }
+        catch (e) { reportSyncError(e); }
       }
     };
+
+    function reportSyncError(e) {
+      console.error("Sync:", e);
+      const el = document.getElementById('firebaseStatus');
+      if (el) el.innerText = "Erro: " + (e && (e.code || e.message) || e);
+    }
 
     function syncToFirestore(fieldToUpdate = null) {
       if (!window.appState.coupleCode || !db) return;
@@ -434,7 +443,7 @@
         payload.history = window.appState.history;
         payload.messages = window.appState.messages;
       }
-      setDoc(docRef, payload, { merge: true }).catch(err => console.error(err));
+      setDoc(docRef, payload, { merge: true }).catch(reportSyncError);
     }
 
     window.setupFirestoreSync = function() {
@@ -472,11 +481,10 @@
 
           // Só guarda localmente: não reenvia ao Firebase o que acabou de receber de lá
           window.__applyingRemote = true;
-          saveLocal();
-          window.__applyingRemote = false;
+          try { saveLocal(); } finally { window.__applyingRemote = false; }
           renderApp();
         }
-      });
+      }, reportSyncError);
     };
 
     window.switchTab = function(tabName) {

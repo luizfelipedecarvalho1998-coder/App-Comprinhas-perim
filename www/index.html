@@ -752,8 +752,15 @@
       const p = window.appState.activePurchase;
       const q = window.appState.searchQuery.toLowerCase().trim();
 
+      // Mapeia e filtra mantendo os índices originais
       const filteredItems = p.items.map((item, originalIdx) => ({ item, originalIdx }))
         .filter(({ item }) => item.name.toLowerCase().includes(q));
+
+      // Ordena visualmente: itens não marcados no topo, marcados (comprados) no final
+      filteredItems.sort((a, b) => {
+        if (a.item.checked === b.item.checked) return 0;
+        return a.item.checked ? 1 : -1;
+      });
 
       const total = p.items.reduce((acc, item) => item.checked ? acc + (item.price * item.qty) : acc, 0);
       const checkedCount = p.items.filter(i => i.checked).length;
@@ -863,7 +870,7 @@
             const userModifier = item.updatedBy;
 
             return `
-              <div class="rounded-2xl border transition overflow-hidden ${item.checked ? 'bg-emerald-950/15 border-emerald-500/30' : 'bg-slate-900 border-slate-800'} ${isSelectedForDel ? 'border-red-500 bg-red-950/20' : ''}"
+              <div class="rounded-2xl border transition-all duration-300 overflow-hidden ${item.checked ? 'bg-slate-950/60 border-slate-800/60 opacity-50 grayscale-[20%]' : 'bg-slate-900 border-slate-800'} ${isSelectedForDel ? 'border-red-500 bg-red-950/20' : ''}"
                    onmousedown="startLongPress(${originalIdx})" 
                    ontouchstart="startLongPress(${originalIdx})" 
                    onmouseup="cancelLongPress()" 
@@ -879,11 +886,11 @@
                     `}
                     <span class="text-lg">${getItemIcon(item.name)}</span>
                     <div class="truncate">
-                      <span class="text-xs font-bold ${item.checked ? 'line-through text-slate-500' : 'text-white'}">${item.name}</span>
+                      <span class="text-xs font-bold ${item.checked ? 'line-through text-slate-400' : 'text-white'}">${item.name}</span>
                       <div class="text-[10px] text-slate-400 flex items-center gap-2">
                         <span>Qtd: <b>${item.qty}x</b></span>
                         <span>•</span>
-                        <span class="font-black text-emerald-400">R$ ${(item.price * item.qty).toFixed(2)}</span>
+                        <span class="font-black ${item.checked ? 'text-slate-400' : 'text-emerald-400'}">R$ ${(item.price * item.qty).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
